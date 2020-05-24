@@ -309,6 +309,39 @@ function removeEmployee(){
 }
 
 function updateEmpRole(){
+    inquirer
+    .prompt([
+        {
+            name: "employee",
+            type: "list",
+            message: "Which employee would you like to update?",
+            choices: employees
+        },
+        {
+            name: "newRole",
+            type: "list",
+            message: "Which role would you like to give the employee?",
+            choices: roles
+        },
+
+    ])
+      .then(function(answer) {
+
+        var query = `SELECT id FROM role WHERE title = ?`;
+        connection.query(query, [answer.newRole], function(err, res) {
+        if (err) throw err;
+
+        var query = `UPDATE employee SET role_id = ? WHERE concat(id," ",first_name, " ", last_name) = ? `;
+        connection.query(query, [res[0].id, answer.employee], function(err, res) {
+        if (err) throw err;
+        start();
+    });
+});
+
+       
+
+        
+      });
     
 }
 
@@ -340,19 +373,3 @@ function addDepartment(){
 
 }
 
-function getID(table,col,x){
-    var query = `SELECT id FROM ?? WHERE ?? = ?`;
-    connection.query(query, [table, col, x], function(err, res) {
-        if (err) throw err;
-        return res[0].id;  
-    });   
-}
-
-function getMgrID(mgrName){
-    var query = `SELECT id FROM EMPLOYEE WHERE CONCAT(first_name," ",last_name) = ?`;
-    connection.query(query, mgrName, function(err, res) {
-        if (err) throw err;
-        return res[0].id;  
-    });
-
-}
