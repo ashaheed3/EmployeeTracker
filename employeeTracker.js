@@ -346,10 +346,39 @@ function updateEmpRole(){
 }
 
 function updateEmpMgr(){
+    inquirer
+    .prompt([
+        {
+            name: "employee",
+            type: "list",
+            message: "Which employee would you like to update?",
+            choices: employees
+        },
+        {
+            name: "manager",
+            type: "list",
+            message: "Which employee would you like to assign as manager?",
+            choices: employees
+        },
 
+    ])
+      .then(function(answer) {
+
+        var query = `UPDATE employee SET manager_id = ? WHERE concat(id," ",first_name, " ", last_name) = ? `;
+        connection.query(query, [answer.manager.slice(0,2), answer.employee], function(err, res) {
+        if (err) throw err;
+        start();
+    });
+});
+
+       
+
+        
+    //   });
 }
 
 function viewAllRoles(){
+    console.table(roles);
 
 }
 
