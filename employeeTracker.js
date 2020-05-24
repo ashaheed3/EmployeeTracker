@@ -3,6 +3,8 @@ var inquirer = require("inquirer");
 var consoleTable = require("console.table");
 
 
+
+
 var connection = mysql.createConnection({
   host: "localhost",
   port: 3306,
@@ -24,12 +26,12 @@ function start() {
       name: "action",
       type: "list",
       message: "What would you like to do?",
-      choices: ["View All Employees", "View All Employees By Department", "View All Employees By Manager", "Add Employee", "Remove Employee", "Update Employee Role", "Update Employee Manager"]
+      choices: ["View All Employees", "View All Employees By Department", "View All Employees By Manager", "Add Employee", "Remove Employee", "Update Employee Role", "Update Employee Manager", "View All Roles", "Add Role", "Update Role", "View All Departments", "Update Deparment", "Add Department","Exit"]
     })
     .then(function(answer) {
         switch (answer.action) {
             case "View All Employees":
-              viewAllEmps();
+              viewEmployees();
               break;
       
             case "View All Employees By Department":
@@ -37,137 +39,136 @@ function start() {
               break;
       
             case "View All Employees By Manager":
-              v();
+              viewEmpsByMgr();
               break;
       
             case "Add Employee":
-              songSearch();
+              addEmployee();
               break;
 
             case "Remove Employee":
-              songSearch();
+              removeEmployee();
               break;
 
             case "Update Employee Role":
-              songSearch();
+              updateEmpRole();
               break;
 
             case "Update Employee Manager":
-              songSearch();
+              updateEmpMgr();
               break;
       
-            case "exit":
+            case "Exit":
               connection.end();
               break;
+        }
     });
 }
 
-// function to handle posting new items up for auction
-function postAuction() {
-  // prompt for info about the item being put up for auction
-  inquirer
-    .prompt([
-      {
-        name: "item",
-        type: "input",
-        message: "What is the item you would like to submit?"
-      },
-      {
-        name: "category",
-        type: "input",
-        message: "What category would you like to place your auction in?"
-      },
-      {
-        name: "startingBid",
-        type: "input",
-        message: "What would you like your starting bid to be?",
-        validate: function(value) {
-          if (isNaN(value) === false) {
-            return true;
-          }
-          return false;
-        }
-      }
-    ])
-    .then(function(answer) {
-      // when finished prompting, insert a new item into the db with that info
-      connection.query(
-        "INSERT INTO auctions SET ?",
-        {
-          item_name: answer.item,
-          category: answer.category,
-          starting_bid: answer.startingBid || 0,
-          highest_bid: answer.startingBid || 0
-        },
-        function(err) {
-          if (err) throw err;
-          console.log("Your auction was created successfully!");
-          // re-prompt the user for if they want to bid or post
-          start();
-        }
-      );
-    });
-}
 
-function bidAuction() {
-  // query the database for all items being auctioned
-  connection.query("SELECT * FROM auctions", function(err, results) {
-    if (err) throw err;
-    // once you have the items, prompt the user for which they'd like to bid on
-    inquirer
-      .prompt([
-        {
-          name: "choice",
-          type: "rawlist",
-          choices: function() {
-            var choiceArray = [];
-            for (var i = 0; i < results.length; i++) {
-              choiceArray.push(results[i].item_name);
-            }
-            return choiceArray;
-          },
-          message: "What auction would you like to place a bid in?"
-        },
-        {
-          name: "bid",
-          type: "input",
-          message: "How much would you like to bid?"
-        }
-      ])
-      .then(function(answer) {
-        // get the information of the chosen item
-        var chosenItem;
-        for (var i = 0; i < results.length; i++) {
-          if (results[i].item_name === answer.choice) {
-            chosenItem = results[i];
-          }
-        }
+function viewEmployees() {
 
-        // determine if bid was high enough
-        if (chosenItem.highest_bid < parseInt(answer.bid)) {
-          // bid was high enough, so update db, let the user know, and start over
-          connection.query(
-            "UPDATE auctions SET ? WHERE ?",
-            [
-              {
-                highest_bid: answer.bid
-              },
-              {
-                id: chosenItem.id
-              }
-            ],
-            function(error) {
-              if (error) throw err;
-              console.log("Bid placed successfully!");
-              start();
-            }
-          );
-        }
-        else {
-          // bid wasn't high enough, so apologize and start over
-          console.log("Your bid was too low. Try again...");
-          start();
-        }
+    var query = `select employee.id as EmployeeID, employee.first_name as "First Name", employee.last_name as "Last Name", 
+    role.title as "Job Title",  department.name as Department, role.salary as Salary, concat(manager.first_name," ",manager.last_name) as Manager
+    from employee
+    left join role on employee.role_id = role.id
+    left join department on department.id = role.department_id
+    left join employee manager on employee.manager_id = manager.id`;
+      connection.query(query, function(err, res) {
+        if (err) throw err;
+        console.table(res);    
+        start();
       });
-  });
+}
+
+function viewEmpsByDep() {
+
+    var query = `select name from department`;
+    connection.query(query, function(err, res) {
+        if (err) throw err;
+        var depts = [];
+        res.forEach(employee => {
+            if(depts.indexOf(employee.name == -1)){
+                depts.push(employee.name)
+            }
+        });
+        inquirer
+            .prompt({
+                name: "dept",
+                type: "list",
+                message: "Which Department would you like to view?",
+                choices: depts
+            })
+            .then(function(answer) {
+                var query = `select employee.id as EmployeeID, employee.first_name as "First Name", employee.last_name as "Last Name", 
+                role.title as "Job Title",  department.name as Department, role.salary as Salary, concat(manager.first_name," ",manager.last_name) as Manager
+                from employee
+                left join role on employee.role_id = role.id
+                left join department on department.id = role.department_id
+                left join employee manager on employee.manager_id = manager.id where department.name = ?`;
+                connection.query(query,answer.dept, function(err, res) {
+                    if (err) throw err;
+                    console.table(res);    
+                    start();
+            });
+             
+      });
+    });
+      
+}
+
+function viewEmpsByMgr() {
+    var query = `select distinct concat(manager.first_name," ",manager.last_name) as name from employee inner join employee manager on employee.manager_id = manager.id`;
+
+    connection.query(query, function(err, res) {
+        if (err) throw err;
+        var managers = [];
+        res.forEach(manager => {
+            if(managers.indexOf(manager.name == -1)){
+                managers.push(manager.name)
+            }
+        });
+
+        // console.log(managers);
+    
+        inquirer
+            .prompt({
+                name: "mgr",
+                type: "list",
+                message: "Which team would you like to view?",
+                choices: managers
+            })
+            .then(function(answer) {
+                var query = `select employee.id as EmployeeID, employee.first_name as "First Name", employee.last_name as "Last Name", 
+                role.title as "Job Title",  department.name as Department, role.salary as Salary, concat(manager.first_name," ",manager.last_name) as Manager
+                from employee
+                left join role on employee.role_id = role.id
+                left join department on department.id = role.department_id
+                left join employee manager on employee.manager_id = manager.id where concat(manager.first_name," ",manager.last_name) = ?`;
+                connection.query(query,answer.mgr, function(err, res) {
+                    if (err) throw err;
+                    console.table(res);    
+                    start();
+                // console.log(answer.mgr);
+            });
+             
+      });
+    });
+  
+}
+
+function addEmployee(){
+
+}
+
+function removeEmployee(){
+
+}
+
+function updateEmpRole(){
+    
+}
+
+function updateEmpMgr(){
+
 }
