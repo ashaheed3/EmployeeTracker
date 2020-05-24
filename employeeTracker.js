@@ -4,6 +4,7 @@ var consoleTable = require("console.table");
 var managers = [];
 var departments = [];
 var roles = [];
+var employees = [];
 
 
 
@@ -30,7 +31,7 @@ function start() {
 
     connection.query(query, function(err, res) {
         if (err) throw err;
-        
+        managers = [];
         res.forEach(manager => {
             if(managers.indexOf(manager.name == -1)){
                 managers.push(manager.name)
@@ -43,7 +44,7 @@ function start() {
 
     connection.query(query, function(err, res) {
         if (err) throw err;
-        
+        departments = [];
         res.forEach(dept => {
             if(departments.indexOf(dept.name == -1)){
                 departments.push(dept.name)
@@ -56,7 +57,7 @@ function start() {
 
     connection.query(query, function(err, res) {
         if (err) throw err;
-        
+        roles = [];
         res.forEach(role => {
             if(roles.indexOf(role.title == -1)){
                 roles.push(role.title)
@@ -64,6 +65,17 @@ function start() {
         });
         // console.log(roles);
     // });
+
+    var query = `select concat(id," ",first_name, " ", last_name) as name from employee`;
+    employees = [];
+    connection.query(query, function(err, res) {
+        if (err) throw err;
+        
+        res.forEach(employee => {
+            if(employees.indexOf(employee.name == -1)){
+                employees.push(employee.name)
+            }
+        });
 
   inquirer
     .prompt({
@@ -133,6 +145,7 @@ function start() {
     });
 });
     });
+});
     
 }
 
@@ -251,13 +264,21 @@ function addEmployee(){
         var query = `SELECT id FROM employee WHERE CONCAT(first_name," ",last_name) = ?`;
         connection.query(query, answer.manager, function(err, res1) {
         if (err) throw err;
-          
-    
+            
+        var param = [];
+        var query = "";
         
-        var query = `INSERT INTO employee (first_name, last_name, role_id, manager_id) values (?,?,?,?)`;
-        connection.query(query, [answer.firstName, answer.lastName,res[0].id,res1[0].id], function(err, res) {
+            if (res1 !== []){
+                param =  [answer.firstName, answer.lastName,res[0].id,];
+                query = `INSERT INTO employee (first_name, last_name, role_id) values (?,?,?)`
+            } else{
+                param = [answer.firstName, answer.lastName,res[0].id,res1[0].id];
+                query = `INSERT INTO employee (first_name, last_name, role_id, manager_id) values (?,?,?,?)`
+            }
+            
+        connection.query(query, param, function(err, res) {
         if (err) throw err;
-          
+        start();
     });
 }); 
        
@@ -266,7 +287,25 @@ function addEmployee(){
 }
 
 function removeEmployee(){
+    inquirer
+    .prompt({
+        name: "delete",
+        type: "list",
+        message: "Which employee would you like to delete?",
+        choices: employees
+      })
+      .then(function(answer) {
 
+        var query = `DELETE FROM employee WHERE concat(id," ",first_name, " ", last_name) = ?`;
+        connection.query(query, answer.delete, function(err, res) {
+        if (err) throw err;
+        start();
+    });
+
+       
+
+        
+      });
 }
 
 function updateEmpRole(){
