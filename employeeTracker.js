@@ -378,11 +378,50 @@ function updateEmpMgr(){
 }
 
 function viewAllRoles(){
-    console.table(roles);
+    var query = `select role.id as RoleID, title as Role, salary as Salary, department.name as Department from role left join department on role.department_id = department.id`;
+      connection.query(query, function(err, res) {
+        if (err) throw err;
+        console.table(res);    
+        // 
+        
+        start();
+      });
 
 }
 
 function addRole(){
+    inquirer
+    .prompt([
+        {
+            name: "newRole",
+            message: "Enter the name of the role you would like to add: ",
+            choices: employees
+        },
+        {
+            name: "salary",
+            message: "Enter salary for new role: "
+        },
+        {
+            name: "dept",
+            type: "list",
+            message: "Select the department the new role should belong to: ",
+            choices: departments
+        },
+
+    ])
+      .then(function(answer) {
+
+        var query = `SELECT id FROM department WHERE name = ?`;
+        connection.query(query, [answer.dept], function(err, res) {
+        if (err) throw err;
+
+        var query = `INSERT INTO role (title, salary, department_id) values (?,?,?) `;
+        connection.query(query, [answer.newRole, answer.salary, res[0].id], function(err, res) {
+        if (err) throw err;
+        start();
+    });
+});
+      });
 
 }
 
